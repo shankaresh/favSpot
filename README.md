@@ -1,12 +1,12 @@
 # User Place Handling with MERN
 
 ### dependency
-node 20
+node 16
 
 ### usage
 
 backend
-> node app.js
+> npm run dev
 
 frontend
 > npm start
