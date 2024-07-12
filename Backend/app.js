@@ -3,6 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const placeRoutes = require('./routes/places-routes');
+const userRoutes = require('./routes/users-routes');
 
 const HttpError = require('./models/http-error');
 
@@ -15,6 +16,7 @@ app.use(bodyParser.json());
 
 // routes
 app.use('/api/places', placeRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 - no routes found middleware
 app.use((req, res, next) => {
