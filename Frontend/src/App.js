@@ -5,7 +5,7 @@ import {
   Redirect,
   Switch
 } from 'react-router-dom';
-
+// import firebase from './firebase';
 // import Users from './user/pages/Users';
 // import NewPlace from './places/pages/NewPlace';
 // import UserPlaces from './places/pages/UserPlaces';
