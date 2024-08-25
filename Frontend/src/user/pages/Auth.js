@@ -1,23 +1,25 @@
 import React, { useState, useContext } from 'react';
+
 import Card from '../../shared/components/UIElements/Card';
 import Input from '../../shared/components/FormElements/Input';
 import Button from '../../shared/components/FormElements/Button';
+import ErrorModal from '../../shared/components/UIElements/ErrorModal';
+import LoadingSpinner from '../../shared/components/UIElements/LoadingSpinner';
+import ImageUpload from '../../shared/components/FormElements/ImageUpload';
 import {
   VALIDATOR_EMAIL,
   VALIDATOR_MINLENGTH,
   VALIDATOR_REQUIRE
 } from '../../shared/util/validators';
 import { useForm } from '../../shared/hooks/form-hook';
+import { useHttpClient } from '../../shared/hooks/http-hook';
 import { AuthContext } from '../../shared/context/auth-context';
 import './Auth.css';
-import LoadingSpinner from '../../shared/components/UIElements/LoadingSpinner';
-import ErrorModal from '../../shared/components/UIElements/ErrorModal';
 
 const Auth = () => {
   const auth = useContext(AuthContext);
   const [isLoginMode, setIsLoginMode] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { isLoading, error, sendRequest, clearError } = useHttpClient();
 
   const [formState, inputHandler, setFormData] = useForm(
     {
@@ -38,7 +40,8 @@ const Auth = () => {
       setFormData(
         {
           ...formState.inputs,
-          name: undefined
+          name: undefined,
+          image: undefined
         },
         formState.inputs.email.isValid && formState.inputs.password.isValid
       );
@@ -49,6 +52,10 @@ const Auth = () => {
           name: {
             value: '',
             isValid: false
+          },
+          image: {
+            value: null,
+            isValid: false
           }
         },
         false
@@ -57,76 +64,47 @@ const Auth = () => {
     setIsLoginMode(prevMode => !prevMode);
   };
 
-  const authSubmitHandler = async(event) => {
+  const authSubmitHandler = async event => {
     event.preventDefault();
-    // console.log(formState.inputs);
-    setIsLoading(true);
 
-    if (isLoginMode) {      
+    if (isLoginMode) {
       try {
-        const loginURL = `${process.env.REACT_APP_BACKEND_BASE_URL}/api/users/login`;
-        const response = await fetch(loginURL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        const responseData = await sendRequest(
+          `${process.env.REACT_APP_BACKEND_BASE_URL}/api/users/login`,
+          'POST',
+          JSON.stringify({
             email: formState.inputs.email.value,
             password: formState.inputs.password.value
-          })
-        });
-
-        const responseData = await response.json();
-        if (!response.ok) {
-          throw new Error(responseData.message);
-        }
-        setIsLoading(false);
-        auth.login();
-      } catch (error) {
-        setIsLoading(false);
-        const err = error?.message || 'Failed to login. Please try again.'
-        setError(err);
-      }
+          }),
+          {
+            'Content-Type': 'application/json'
+          }
+        );
+        auth.login(responseData.userId, responseData.token);
+      } catch (err) {}
     } else {
       try {
-        const signUpURL = `${process.env.REACT_APP_BACKEND_BASE_URL}/api/users/signup`;
-        const response = await fetch(signUpURL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: formState.inputs.name.value,
-            email: formState.inputs.email.value,
-            password: formState.inputs.password.value
-          })
-        });
-
-        const responseData = await response.json();
-        if (!response.ok) {
-          throw new Error(responseData.message);
-        }
-        setIsLoading(false);
-        switchModeHandler();
-      } catch (error) {
-        setIsLoading(false);
-        const err = error?.message || 'Failed to sign up. Please try again.'
-        setError(err);
-      }
+        const formData = new FormData();
+        formData.append('email', formState.inputs.email.value);
+        formData.append('name', formState.inputs.name.value);
+        formData.append('password', formState.inputs.password.value);
+        formData.append('image', formState.inputs.image.value);
+        const responseData = await sendRequest(
+          `${process.env.REACT_APP_BACKEND_BASE_URL}/api/users/signup`,
+          'POST',
+          formData
+        );
+        auth.login(responseData.userId, responseData.token);
+      } catch (err) {}
     }
-    
-  };
-
-  const resetError = () => {
-    setError('');
   };
 
   return (
     <React.Fragment>
-      <ErrorModal error={error} onClear={resetError} />
+      <ErrorModal error={error} onClear={clearError} />
       <Card className="authentication">
-        {isLoading && <LoadingSpinner asOverlay/>}
-        <h2>{isLoginMode?"Login Required":"Register User"}</h2>
+        {isLoading && <LoadingSpinner asOverlay />}
+        <h2>Login Required</h2>
         <hr />
         <form onSubmit={authSubmitHandler}>
           {!isLoginMode && (
@@ -138,6 +116,14 @@ const Auth = () => {
               validators={[VALIDATOR_REQUIRE()]}
               errorText="Please enter a name."
               onInput={inputHandler}
+            />
+          )}
+          {!isLoginMode && (
+            <ImageUpload
+              center
+              id="image"
+              onInput={inputHandler}
+              errorText="Please provide an image."
             />
           )}
           <Input
@@ -154,9 +140,8 @@ const Auth = () => {
             id="password"
             type="password"
             label="Password"
-            autoComplete="off"
-            validators={[VALIDATOR_MINLENGTH(5)]}
-            errorText="Please enter a valid password, at least 5 characters."
+            validators={[VALIDATOR_MINLENGTH(6)]}
+            errorText="Please enter a valid password, at least 6 characters."
             onInput={inputHandler}
           />
           <Button type="submit" disabled={!formState.isValid}>

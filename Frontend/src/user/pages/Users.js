@@ -3,43 +3,33 @@ import React, { useEffect, useState } from 'react';
 import UsersList from '../components/UsersList';
 import ErrorModal from '../../shared/components/UIElements/ErrorModal';
 import LoadingSpinner from '../../shared/components/UIElements/LoadingSpinner';
+import { useHttpClient } from '../../shared/hooks/http-hook';
 
 const Users = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [loadedUsers, setLoadedUsers] = useState([]);
+  const { isLoading, error, sendRequest, clearError } = useHttpClient();
+  const [loadedUsers, setLoadedUsers] = useState();
 
   useEffect(() => {
-    const fetchUsersList = async () => {
-      setIsLoading(true);
+    const fetchUsers = async () => {
       try {
-        const fetchUserURL = `${process.env.REACT_APP_BACKEND_BASE_URL}/api/users`;
-        const response = await fetch(fetchUserURL);
-        const responseData = await response.json();
-        if (!response.ok) {
-          throw new Error(response.message);
-        }
-        setLoadedUsers(responseData);
-      } catch (error) {
-        const err = error?.message || 'Something went wrong';
-        setError(err);
-      }
-      setIsLoading(false);
-    }
-    fetchUsersList();
+        const responseData = await sendRequest(
+          `${process.env.REACT_APP_BACKEND_BASE_URL}/api/users`
+        );
 
-    return () => {};
-  },[]);
-
-  const resetError = () => {
-    setError(null);
-  }
+        setLoadedUsers(responseData.users);
+      } catch (err) {}
+    };
+    fetchUsers();
+  }, [sendRequest]);
 
   return (
     <React.Fragment>
-      <ErrorModal error={error} onClear={resetError} />
-      {isLoading && <div className='center'><LoadingSpinner /></div>}
-
+      <ErrorModal error={error} onClear={clearError} />
+      {isLoading && (
+        <div className="center">
+          <LoadingSpinner />
+        </div>
+      )}
       {!isLoading && loadedUsers && <UsersList items={loadedUsers} />}
     </React.Fragment>
   );

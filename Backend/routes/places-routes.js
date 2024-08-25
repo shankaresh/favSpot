@@ -1,39 +1,44 @@
 const express = require('express');
 const { check } = require('express-validator');
 
-const { 
-    getPlaceById, 
-    getPlacesByUserId, 
-    createPlace, 
-    updatePlace, 
-    deletePlace 
-} = require('../controllers/places-controller');
+const placesControllers = require('../controllers/places-controllers');
+const fileUpload = require('../middleware/file-upload');
+const checkAuth = require('../middleware/check-auth');
 
 const router = express.Router();
 
-router.get('/:pid', getPlaceById);
+router.get('/:pid', placesControllers.getPlaceById);
 
-router.get('/user/:uid', getPlacesByUserId);
+router.get('/user/:uid', placesControllers.getPlacesByUserId);
+
+router.use(checkAuth);
 
 router.post(
-    '/', 
-    [
-        check('title').not().isEmpty().withMessage('Please enter your name'), 
-        check('description').isLength({ min:5 }).withMessage('Title must not be empty').isLength({ max: 50 }).withMessage('Title must not exceed 50 characters'),
-        check('address').not().isEmpty().withMessage('Address must not be empty'),
-    ], 
-    createPlace
+  '/',
+  fileUpload.single('image'),
+  [
+    check('title')
+      .not()
+      .isEmpty(),
+    check('description').isLength({ min: 5 }),
+    check('address')
+      .not()
+      .isEmpty()
+  ],
+  placesControllers.createPlace
 );
 
 router.patch(
-    '/:pid', 
-    [
-        check('title').optional().isLength({ max: 50 }),
-        check('description').optional().isLength({ min: 5, max: 50 }),
-    ],
-    updatePlace
+  '/:pid',
+  [
+    check('title')
+      .not()
+      .isEmpty(),
+    check('description').isLength({ min: 5 })
+  ],
+  placesControllers.updatePlace
 );
 
-router.delete('/:pid', deletePlace);
+router.delete('/:pid', placesControllers.deletePlace);
 
 module.exports = router;
